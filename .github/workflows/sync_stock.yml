@@ -1,3 +1,5 @@
+- name: Download a Build Artifact
+  uses: actions/download-artifact@v4.3.0
 name: Sincronização de Stock Suprides-Shopify
 
 on:
@@ -39,5 +41,3 @@ jobs:
         with:
           name: sync-logs
           path: sync_stock.log
-- name: Download a Build Artifact
-  uses: actions/download-artifact@v4.3.0
