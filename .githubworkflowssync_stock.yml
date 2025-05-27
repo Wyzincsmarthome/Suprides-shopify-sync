@@ -1,0 +1,41 @@
+name: Sincronização de Stock Suprides-Shopify
+
+on:
+  schedule:
+    # Executa a cada hora
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    # Permite execução manual através da interface do GitHub
+
+jobs:
+  sync-stock:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+      
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+      
+      - name: Executar script de sincronização
+        env:
+          SUPRIDES_USER: ${{ secrets.SUPRIDES_USER }}
+          SUPRIDES_PASSWORD: ${{ secrets.SUPRIDES_PASSWORD }}
+          SHOPIFY_STORE: ${{ secrets.SHOPIFY_STORE }}
+          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
+          SHOPIFY_API_PASSWORD: ${{ secrets.SHOPIFY_API_PASSWORD }}
+        run: python sync_stock.py
+      
+      - name: Guardar logs como artefacto
+        uses: actions/upload-artifact@v3
+        with:
+          name: sync-logs
+          path: sync_stock.log
