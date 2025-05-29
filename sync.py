@@ -1,5 +1,4 @@
 import os
-import time
 import requests
 from dotenv import load_dotenv
 from discord_notify import send_discord_message
@@ -32,8 +31,8 @@ def get_shopify_product_by_sku(sku):
     for product in products:
         for variant in product['variants']:
             if variant['sku'] == sku:
-                return product  # já existe
-    return None  # não encontrado
+                return product
+    return None
 
 def get_product_from_suprides(ean):
     url = f"https://www.suprides.pt/rest/V1/integration/products-list?EAN={ean}"
@@ -96,7 +95,7 @@ def sync_shopify_products():
                 'variants': [{
                     'sku': ean,
                     'price': supplier_price,
-                    'inventory_quantity': 10,  # aqui poderás ajustar conforme stock real
+                    'inventory_quantity': 10,
                     'inventory_management': 'shopify'
                 }],
                 'images': images
@@ -109,13 +108,8 @@ def sync_shopify_products():
             create_product_on_shopify(product_payload)
 
 if __name__ == "__main__":
-    while True:
-        print("🚀 Iniciando sincronização com Shopify e Suprides...")
-        try:
-            sync_shopify_products()
-            print("✅ Sincronização concluída!")
-        except Exception as e:
-            print(f"❌ Erro durante a sincronização: {e}")
-
-        print("⏳ Aguardando 2 horas para a próxima execução...\n")
-        time.sleep(2 * 60 * 60)  # 2 horas = 7200 segundos
+    try:
+        sync_shopify_products()
+        print("✅ Sincronização concluída!")
+    except Exception as e:
+        print(f"❌ Erro durante a sincronização: {e}")
