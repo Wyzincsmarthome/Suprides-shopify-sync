@@ -21,8 +21,8 @@ HEADERS_SUPRIDES = {
     'Content-Type': 'application/json'
 }
 
-def get_product_by_sku(sku):
-    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json?fields=id,title,variants"
+def get_shopify_product_by_sku(sku):
+    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json"
     response = requests.get(url, headers=HEADERS_SHOPIFY)
     if response.status_code != 200:
         print(f"❌ Erro ao buscar produtos da Shopify: {response.status_code}")
@@ -32,12 +32,8 @@ def get_product_by_sku(sku):
     for product in products:
         for variant in product['variants']:
             if variant['sku'] == sku:
-                return {
-                    'id': product['id'],
-                    'title': product['title'],
-                    'price': variant['price']
-                }
-    return None
+                return product  # já existe
+    return None  # não encontrado
 
 def get_product_from_suprides(ean):
     url = f"https://www.suprides.pt/rest/V1/integration/products-list?EAN={ean}"
@@ -51,6 +47,22 @@ def get_product_from_suprides(ean):
         return None
 
     return data[0]
+
+def create_product_on_shopify(product_data):
+    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json"
+    response = requests.post(url, headers=HEADERS_SHOPIFY, json=product_data)
+    if response.status_code == 201:
+        print(f"✅ Produto criado na Shopify: {product_data['product']['title']}")
+    else:
+        print(f"❌ Erro ao criar produto Shopify: {response.status_code} - {response.text}")
+
+def update_product_on_shopify(product_id, product_data):
+    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products/{product_id}.json"
+    response = requests.put(url, headers=HEADERS_SHOPIFY, json=product_data)
+    if response.status_code == 200:
+        print(f"✅ Produto atualizado na Shopify: {product_data['product']['title']}")
+    else:
+        print(f"❌ Erro ao atualizar produto Shopify: {response.status_code} - {response.text}")
 
 def sync_shopify_products():
     with open('productslist.txt', 'r') as file:
@@ -71,18 +83,30 @@ def sync_shopify_products():
             continue
 
         name = suprides_product.get('name')
-        supplier_price = suprides_product.get('pvpr')
-        stock = suprides_product.get('stock')
+        supplier_price = custom_price if custom_price else suprides_product.get('pvpr')
+        description = suprides_product.get('description', '')
+        images = [{'src': img} for img in suprides_product.get('images', [])]
 
-        msg = (f"✅ Produto encontrado: {name}\n"
-               f"EAN: {ean}\n"
-               f"Preço fornecedor (pvpr): {supplier_price} €\n"
-               f"Stock: {stock}\n"
-               f"Preço personalizado (override): {custom_price if custom_price else 'Nenhum'}")
-        print(msg)
-        send_discord_message(DISCORD_WEBHOOK_URL, msg)
+        existing_product = get_shopify_product_by_sku(ean)
 
-        # Aqui faltaria o código para criar/atualizar na Shopify com detalhes completos
+        product_payload = {
+            'product': {
+                'title': name,
+                'body_html': description,
+                'variants': [{
+                    'sku': ean,
+                    'price': supplier_price,
+                    'inventory_quantity': 10,  # aqui poderás ajustar conforme stock real
+                    'inventory_management': 'shopify'
+                }],
+                'images': images
+            }
+        }
+
+        if existing_product:
+            update_product_on_shopify(existing_product['id'], product_payload)
+        else:
+            create_product_on_shopify(product_payload)
 
 if __name__ == "__main__":
     while True:
@@ -95,4 +119,3 @@ if __name__ == "__main__":
 
         print("⏳ Aguardando 2 horas para a próxima execução...\n")
         time.sleep(2 * 60 * 60)  # 2 horas = 7200 segundos
-
