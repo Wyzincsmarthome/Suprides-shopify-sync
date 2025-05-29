@@ -1,42 +1,31 @@
-name: Sincronização de Stock Suprides-Shopify
+name: Sincronização Suprides-Shopify
 
 on:
   schedule:
-    # Executa a cada hora
-    - cron: '0 * * * *'
+    - cron: '0 */2 * * *'  # A cada 2 horas
   workflow_dispatch:
-    # Permite execução manual através da interface do GitHub
 
 jobs:
-  sync-stock:
+  sync:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v4
+    - name: Checkout do código
+      uses: actions/checkout@v4
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-      - name: Instalar dependências
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+    - name: Instalar dependências
+      run: |
+        pip install -r requirements.txt
 
-      - name: Executar script de sincronização
-        env:
-          SUPRIDES_USER: ${{ secrets.SUPRIDES_USER }}
-          SUPRIDES_PASSWORD: ${{ secrets.SUPRIDES_PASSWORD }}
-          SHOPIFY_STORE: ${{ secrets.SHOPIFY_STORE }}
-          SHOPIFY_API_KEY: ${{ secrets.SHOPIFY_API_KEY }}
-          SHOPIFY_API_PASSWORD: ${{ secrets.SHOPIFY_API_PASSWORD }}
-        run: python sync_stock.py
-
-      - name: Guardar logs como artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: sync-logs
-          path: sync_stock.log
-
+    - name: Executar sincronização
+      env:
+        SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}
+        SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        SUPRIDES_BEARER_TOKEN: ${{ secrets.SUPRIDES_BEARER_TOKEN }}
+      run: python sync.py
