@@ -2,8 +2,8 @@ name: Sincronização Suprides-Shopify
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  # A cada 2 horas
-  workflow_dispatch:
+    - cron: '0 */2 * * *'  # executa a cada 2 horas
+  workflow_dispatch:        # permite execução manual
 
 jobs:
   sync:
