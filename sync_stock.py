@@ -11,7 +11,7 @@ SHOPIFY_STORE_NAME = os.getenv('SHOPIFY_STORE_NAME')
 SHOPIFY_ACCESS_TOKEN = os.getenv('SHOPIFY_ACCESS_TOKEN')
 
 # Credenciais Suprides
-SUPRIDES_BEARER = os.getenv('SUPRIDES_BEARER')
+SUPRIDES_BEARER_TOKEN = os.getenv('SUPRIDES_BEARER_TOKEN')
 
 # Função para ler EANs do ficheiro
 def read_products_list():
@@ -28,7 +28,7 @@ def read_products_list():
 # Função para buscar dados do fornecedor
 def get_product_from_suprides(ean):
     url = f"https://www.suprides.pt/rest/V1/integration/products-list?EAN={ean}"
-    headers = {"Authorization": f"Bearer {SUPRIDES_BEARER}"}
+    headers = {"Authorization": f"Bearer {SUPRIDES_BEARER_TOKEN}"}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
