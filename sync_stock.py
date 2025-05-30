@@ -104,7 +104,7 @@ def main():
             send_discord_message(os.getenv('DISCORD_WEBHOOK_URL'), msg)
             continue
 
-        stock_quantity = parse_stock_quantity(suprides_product['stock'])
+        stock_quantity = parse_stock_quantity(suprides_product.get('stock', ''))
         price_to_use = custom_price if custom_price else suprides_product['pvpr']
 
         product_payload = {
