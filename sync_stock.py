@@ -1,131 +1,131 @@
 import os
-import requests
 import json
+import requests
 from dotenv import load_dotenv
-from discord_notify import send_discord_message
 
 load_dotenv()
 
+# Shopify configs
 SHOPIFY_STORE_NAME = os.getenv('SHOPIFY_STORE_NAME')
 SHOPIFY_ACCESS_TOKEN = os.getenv('SHOPIFY_ACCESS_TOKEN')
-SUPRIDES_BEARER_TOKEN = os.getenv('SUPRIDES_BEARER_TOKEN')
+
+# Suprides configs
+SUPRIDES_BEARER = os.getenv('SUPRIDES_BEARER')
+
+# Discord webhook
 DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
 
-HEADERS_SHOPIFY = {
-    "Content-Type": "application/json",
-    "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
-}
+def send_discord_message(message):
+    data = {"content": message}
+    response = requests.post(DISCORD_WEBHOOK_URL, json=data)
+    if response.status_code == 204:
+        print("✅ Notificação enviada ao Discord.")
+    else:
+        print(f"❌ Erro ao enviar notificação Discord: {response.status_code}")
 
-HEADERS_SUPRIDES = {
-    "Authorization": f"Bearer {SUPRIDES_BEARER_TOKEN}"
-}
-
-def read_products_list():
-    with open('productslist.txt', 'r') as file:
-        lines = file.readlines()
-    return [line.strip().split('/')[0] for line in lines]
-
-def get_suprides_product(ean):
+def get_product_from_suprides(ean):
     url = f"https://www.suprides.pt/rest/V1/integration/products-list?EAN={ean}"
-    response = requests.get(url, headers=HEADERS_SUPRIDES)
+    headers = {"Authorization": f"Bearer {SUPRIDES_BEARER}"}
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
-        data = response.json()
-        if data:
-            print(f"✅ Dados recebidos da API Suprides: {json.dumps(data, indent=2, ensure_ascii=False)}")
-            return data[0]  # Assume primeiro item
+        products = response.json()
+        if products and isinstance(products, list) and len(products) > 0:
+            return products[0]
         else:
-            print(f"⚠ Nenhum produto encontrado na Suprides para EAN {ean}")
             return None
     else:
         print(f"❌ Erro API Suprides ({response.status_code}): {response.text}")
         return None
 
-def get_shopify_product_by_ean(ean):
-    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json"
-    response = requests.get(url, headers=HEADERS_SHOPIFY)
+def shopify_product_exists(sku):
+    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json?fields=id,title,variants"
+    headers = {"X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN}
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         products = response.json().get('products', [])
         for product in products:
             for variant in product['variants']:
-                if variant.get('sku') == ean:
-                    return product
-        return None
+                if variant['sku'] == sku:
+                    return True
     else:
-        print(f"❌ Erro API Shopify ({response.status_code}): {response.text}")
-        return None
+        print(f"❌ Erro ao verificar produto Shopify: {response.status_code} - {response.text}")
+    return False
 
-def create_or_update_shopify_product(ean, suprides_product, custom_price):
-    product_payload = {
-    "product": {
-        "title": suprides_product.get('name', f"Produto {ean}"),
-        "body_html": suprides_product.get('description', 'Sem descrição'),
-        "vendor": suprides_product.get('brand', 'Sem marca'),
-        "product_type": suprides_product.get('family', 'Sem categoria'),
-        "tags": ", ".join(filter(None, [
-            suprides_product.get('product_line', ''),
-            suprides_product.get('brand', ''),
-            suprides_product.get('family', ''),
-            suprides_product.get('sub_family', '')
-        ])),
-        "published": True,
-        "variants": [
-            {
-                "sku": ean,
-                "price": str(custom_price if custom_price else suprides_product.get('pvpr', '0')),
-                "inventory_management": "shopify",
-                "inventory_quantity": parse_stock_quantity(suprides_product.get('stock', ''))
-            }
-        ],
-        "images": [{"src": img} for img in suprides_product.get('images', [])]
+def create_product_in_shopify(product_data, price_override=None):
+    url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN
     }
-}
 
-    shopify_product = get_shopify_product_by_ean(ean)
-    if shopify_product:
-        product_id = shopify_product['id']
-        url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products/{product_id}.json"
-        response = requests.put(url, headers=HEADERS_SHOPIFY, json=product_payload)
-        action = 'Atualizado'
+    price_to_use = price_override if price_override else product_data['pvpr']
+    stock_quantity = parse_stock_quantity(product_data['stock'])
+
+    payload = {
+        "product": {
+            "title": product_data['name'],
+            "body_html": product_data['description'],
+            "vendor": product_data['brand'],
+            "product_type": product_data['family'] or "Sem categoria",
+            "tags": f"{product_data['brand']}, {product_data['family']}, {product_data['sub_family']}",
+            "variants": [
+                {
+                    "price": price_to_use,
+                    "sku": product_data['ean'],
+                    "inventory_management": "shopify",
+                    "inventory_quantity": stock_quantity
+                }
+            ],
+            "images": [{"src": img_url} for img_url in product_data['images']]
+        }
+    }
+
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+    if response.status_code == 201:
+        print(f"✅ Produto criado na Shopify: {product_data['name']}")
     else:
-        url = f"https://{SHOPIFY_STORE_NAME}.myshopify.com/admin/api/2023-04/products.json"
-        response = requests.post(url, headers=HEADERS_SHOPIFY, json=product_payload)
-        action = 'Criado'
+        print(f"❌ Erro ao criar produto Shopify: {response.status_code} - {response.text}")
 
-    if response.status_code in [200, 201]:
-        print(f"✅ Produto {action} na Shopify: {product_payload['product']['title']}")
-    else:
-        print(f"❌ Erro ao {action.lower()} produto Shopify ({response.status_code}): {response.text}")
-
-def parse_stock_quantity(stock_text):
-    if not stock_text:
-        return 0
-    stock_text = stock_text.lower()
-    if "disponível" not in stock_text:
-        return 0
-    if "< 10" in stock_text:
-        return 5
-    if "> 10" in stock_text:
+def parse_stock_quantity(stock_str):
+    if ">" in stock_str:
         return 20
-    return 10
+    elif "<" in stock_str:
+        return 5
+    elif "Esgotado" in stock_str or "Sem stock" in stock_str:
+        return 0
+    else:
+        return 10
 
 def main():
-    ean_list = read_products_list()
-    print(f"📦 Total de EANs no ficheiro: {len(ean_list)}")
+    if not os.path.exists("productslist.txt"):
+        print("❌ Ficheiro productslist.txt não encontrado!")
+        return
 
-    for line in ean_list:
-        parts = line.strip().split('/')
-        ean = parts[0]
-        custom_price = parts[1] if len(parts) > 1 else None
+    with open("productslist.txt", "r") as f:
+        ean_lines = [line.strip() for line in f if line.strip()]
 
-        suprides_product = get_suprides_product(ean)
-        if suprides_product:
-            price_to_use = custom_price if custom_price else suprides_product.get('pvpr', '0')
-            create_or_update_shopify_product(ean, suprides_product, price_to_use)
+    print(f"📦 Total de EANs no ficheiro: {len(ean_lines)}")
+
+    for line in ean_lines:
+        if "/" in line:
+            ean, custom_price = line.split("/")
+            custom_price = custom_price.strip()
         else:
-            print(f"⚠ Nenhum produto encontrado na Suprides para EAN {ean}")
+            ean = line.strip()
+            custom_price = None
 
-    # Notificação final
-    send_discord_message(DISCORD_WEBHOOK_URL, f"✅ Sincronização concluída para {len(ean_list)} produtos.")
+        suprides_product = get_product_from_suprides(ean)
+        if suprides_product:
+            print(f"✅ Produto encontrado na Suprides: {suprides_product['name']}")
+
+            if shopify_product_exists(ean):
+                print(f"ℹ Produto já existe na Shopify, ignorando criação: {ean}")
+            else:
+                create_product_in_shopify(suprides_product, price_override=custom_price)
+        else:
+            warning_msg = f"⚠ Nenhum produto encontrado na Suprides para EAN {ean}"
+            print(warning_msg)
+            send_discord_message(warning_msg)
 
 if __name__ == "__main__":
     main()
