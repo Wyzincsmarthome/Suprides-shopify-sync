@@ -56,23 +56,29 @@ def get_shopify_product_by_ean(ean):
 
 def create_or_update_shopify_product(ean, suprides_product, custom_price):
     product_payload = {
-        "product": {
-            "title": suprides_product.get('name', f"Produto {ean}"),
-            "body_html": suprides_product.get('description', ''),
-            "vendor": suprides_product.get('brand', ''),
-            "product_type": suprides_product.get('family', ''),
-            "tags": suprides_product.get('product_line', ''),
-            "variants": [
-                {
-                    "sku": ean,
-                    "price": custom_price if custom_price else suprides_product.get('pvpr', '0'),
-                    "inventory_management": "shopify",
-                    "inventory_quantity": parse_stock_quantity(suprides_product.get('stock', ''))
-                }
-            ],
-            "images": [{"src": img} for img in suprides_product.get('images', [])]
-        }
+    "product": {
+        "title": suprides_product.get('name', f"Produto {ean}"),
+        "body_html": suprides_product.get('description', 'Sem descrição'),
+        "vendor": suprides_product.get('brand', 'Sem marca'),
+        "product_type": suprides_product.get('family', 'Sem categoria'),
+        "tags": ", ".join(filter(None, [
+            suprides_product.get('product_line', ''),
+            suprides_product.get('brand', ''),
+            suprides_product.get('family', ''),
+            suprides_product.get('sub_family', '')
+        ])),
+        "published": True,
+        "variants": [
+            {
+                "sku": ean,
+                "price": str(custom_price if custom_price else suprides_product.get('pvpr', '0')),
+                "inventory_management": "shopify",
+                "inventory_quantity": parse_stock_quantity(suprides_product.get('stock', ''))
+            }
+        ],
+        "images": [{"src": img} for img in suprides_product.get('images', [])]
     }
+}
 
     shopify_product = get_shopify_product_by_ean(ean)
     if shopify_product:
