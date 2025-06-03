@@ -3,7 +3,6 @@ import requests
 from dotenv import load_dotenv
 from discord_notify import send_discord_message
 
-# Carregar variáveis do .env ou GitHub secrets
 load_dotenv()
 
 SUPRIDES_BEARER = os.getenv('SUPRIDES_BEARER')
@@ -15,7 +14,7 @@ SHOPIFY_STORE_NAME = os.getenv('SHOPIFY_STORE_NAME')
 DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')
 
 def get_product_from_suprides(ean):
-    url = f"https://www.suprides.pt/rest/V1/integration/products-list"
+    url = "https://www.suprides.pt/rest/V1/integration/products-list"
     params = {
         'user': SUPRIDES_USER,
         'password': SUPRIDES_PASSWORD,
@@ -25,9 +24,16 @@ def get_product_from_suprides(ean):
         'Authorization': f'Bearer {SUPRIDES_BEARER}',
         'Content-Type': 'application/json'
     }
+
+    print(f"🔍 DEBUG: Requesting Suprides API for EAN {ean}")
+    print(f"URL: {url}")
+    print(f"Params: user={SUPRIDES_USER}, password=***, EAN={ean}")
+    print(f"Headers: Authorization=Bearer ****")
+
     response = requests.get(url, headers=headers, params=params)
     print(f"Status code: {response.status_code}")
     print(f"Response text: {response.text}")
+
     if response.status_code == 200:
         data = response.json()
         if data and isinstance(data, list) and len(data) > 0:
@@ -55,7 +61,7 @@ def create_or_update_shopify_product(product_data, custom_price=None):
                 {
                     "sku": product_data['ean'],
                     "price": custom_price if custom_price else product_data['pvpr'],
-                    "inventory_quantity": 10,  # Exemplo fixo (podes ligar com o stock real)
+                    "inventory_quantity": 10,
                     "inventory_management": "shopify"
                 }
             ],
@@ -78,7 +84,7 @@ def main():
     for ean in eans:
         suprides_product = get_product_from_suprides(ean)
         if suprides_product:
-            custom_price = None  # Adiciona lógica se quiseres ler preço customizado do ficheiro
+            custom_price = None
             create_or_update_shopify_product(suprides_product, custom_price)
         else:
             msg = f"⚠ Nenhum produto encontrado na Suprides para EAN {ean}"
