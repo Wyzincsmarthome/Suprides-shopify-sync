@@ -1,11 +1,9 @@
 import os
 import requests
 import json
-from dotenv import load_dotenv
 from discord_notify import send_discord_message
 from categorization import get_tags_for_product
 
-load_dotenv()
 
 # Credenciais das APIs
 SHOPIFY_STORE_NAME = os.getenv("SHOPIFY_STORE_NAME")
