@@ -30,4 +30,6 @@ jobs:
           SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           SUPRIDES_BEARER_TOKEN: ${{ secrets.SUPRIDES_BEARER_TOKEN }}
-        run: python sync_stock.py
+        - name: Ver variáveis de ambiente
+  run: python print_env.py
+
