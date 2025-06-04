@@ -1,13 +1,14 @@
-name: sync-stock
+name: Sync Stock
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */2 * * *"  # a cada 2 horas
+    - cron: '0 */2 * * *'  # De 2 em 2 horas
 
 jobs:
-  run-sync:
+  sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
@@ -22,10 +23,3 @@ jobs:
 
       - name: Executar script de sincronização
         run: python sync_stock.py
-        env:
-          SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
-          SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}
-          SUPRIDES_BEARER: ${{ secrets.SUPRIDES_BEARER }}
-          SUPRIDES_USER: ${{ secrets.SUPRIDES_USER }}
-          SUPRIDES_PASSWORD: ${{ secrets.SUPRIDES_PASSWORD }}
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
