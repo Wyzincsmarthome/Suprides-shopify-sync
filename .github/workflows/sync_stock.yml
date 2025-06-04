@@ -1,25 +1,31 @@
 name: sync-stock
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 */2 * * *'  # De 2 em 2 horas
-  workflow_dispatch:       # Permite disparar manualmente
+    - cron: "0 */2 * * *"  # a cada 2 horas
 
 jobs:
   run-sync:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout do repositório
-      uses: actions/checkout@v4
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-    - name: Configurar Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
 
-    - name: Instalar dependências
-      run: pip install -r requirements.txt
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
 
-    - name: Executar script de sincronização
-      run: python sync_stock.py
+      - name: Executar script de sincronização
+        run: python sync_stock.py
+        env:
+          SHOPIFY_STORE_NAME: ${{ secrets.SHOPIFY_STORE_NAME }}
+          SHOPIFY_ACCESS_TOKEN: ${{ secrets.SHOPIFY_ACCESS_TOKEN }}
+          SUPRIDES_BEARER: ${{ secrets.SUPRIDES_BEARER }}
+          SUPRIDES_USER: ${{ secrets.SUPRIDES_USER }}
+          SUPRIDES_PASSWORD: ${{ secrets.SUPRIDES_PASSWORD }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
